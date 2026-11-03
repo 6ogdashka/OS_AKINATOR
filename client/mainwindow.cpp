@@ -16,6 +16,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QVBoxLayout>
 
 #include <cstddef>
@@ -53,6 +54,39 @@ QLabel* makeImageLabel(QWidget* parent, const QString& name, int side)
     label->setAlignment(Qt::AlignCenter);
     label->setPixmap(loadStatePixmap(name, side));
     return label;
+}
+
+// Подсветка ошибки в статусной строке: меняем динамическое свойство и
+// переполировываем виджет, чтобы сработал селектор QLabel[error="true"] из QSS.
+void setErrorStyle(QLabel* label, bool error)
+{
+    if (!label || label->property("error").toBool() == error) {
+        return;
+    }
+    label->setProperty("error", error);
+    label->style()->unpolish(label);
+    label->style()->polish(label);
+}
+
+// Текст ошибки подключения с подсказкой: самая частая причина отказа — в поле
+// остался 127.0.0.1, хотя сервер запущен на другом компьютере.
+QString connectionErrorMessage(const QString& raw, const QString& endpoint)
+{
+    if (raw.contains(QStringLiteral("refused"), Qt::CaseInsensitive)) {
+        return QStringLiteral("%1 — по адресу %2 никто не принимает подключения.\n"
+                              "Проверьте: сервер запущен; в поле указан IP машины с "
+                              "сервером (127.0.0.1 — это ваш же компьютер); порт "
+                              "совпадает с GAME_SERVER_PORT на сервере.")
+            .arg(raw, endpoint);
+    }
+    if (raw.contains(QStringLiteral("timed out"), Qt::CaseInsensitive)
+        || raw.contains(QStringLiteral("unreachable"), Qt::CaseInsensitive)) {
+        return QStringLiteral("%1 — %2 не отвечает.\n"
+                              "Проверьте адрес и сеть: машина с сервером доступна "
+                              "(ping), порт открыт в фаерволе (9999/tcp).")
+            .arg(raw, endpoint);
+    }
+    return raw;
 }
 
 // Скрыть элементы списка, не содержащие подстроку поиска (без учёта регистра).
@@ -467,6 +501,8 @@ void MainWindow::updateTurnStatus()
         statusLabel_->clear();
         break;
     }
+    // Любая смена состояния снимает подсветку ошибки.
+    setErrorStyle(statusLabel_, false);
 }
 
 void MainWindow::resetGameData()
@@ -511,6 +547,7 @@ void MainWindow::onConnectClicked()
     }
     const int port = portField_->value();
     connectStatusLabel_->setText(QStringLiteral("Подключение к %1:%2…").arg(host).arg(port));
+    setErrorStyle(connectStatusLabel_, false);
     applyState(UiState::Connecting);
     connection_->connectToServer(host, static_cast<quint16>(port));
 }
@@ -703,7 +740,11 @@ void MainWindow::onServerError(const QString& text)
     appendLog(QStringLiteral("Ошибка: %1").arg(text));
 
     if (state_ == UiState::Disconnected || state_ == UiState::Connecting) {
-        connectStatusLabel_->setText(text);
+        const QString endpoint = QStringLiteral("%1:%2")
+                                     .arg(hostField_->text().trimmed())
+                                     .arg(portField_->value());
+        connectStatusLabel_->setText(connectionErrorMessage(text, endpoint));
+        setErrorStyle(connectStatusLabel_, true);
         return;
     }
 
@@ -715,6 +756,7 @@ void MainWindow::onServerError(const QString& text)
         applyState(UiState::MyTurn);
     }
     statusLabel_->setText(QStringLiteral("Ошибка: %1").arg(text));
+    setErrorStyle(statusLabel_, true);
 }
 
 void MainWindow::onOpponentDisconnected(const QString& text)

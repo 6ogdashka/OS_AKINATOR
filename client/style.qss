@@ -105,6 +105,15 @@ QLabel#mutedLabel {
     color: #A99BC0;
 }
 
+/* Ошибка подключения/сервера: подсказка выводится тем же лейблом. */
+QLabel#mutedLabel[error="true"] {
+    color: #F2A2A2;
+}
+
+QLabel#statusLabel[error="true"] {
+    color: #F2A2A2;
+}
+
 QLabel#stateImage {
     background: transparent;
 }
