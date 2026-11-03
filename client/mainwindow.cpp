@@ -74,9 +74,10 @@ QString connectionErrorMessage(const QString& raw, const QString& endpoint)
 {
     if (raw.contains(QStringLiteral("refused"), Qt::CaseInsensitive)) {
         return QStringLiteral("%1 — по адресу %2 никто не принимает подключения.\n"
-                              "Проверьте: сервер запущен; в поле указан IP машины с "
-                              "сервером (127.0.0.1 — это ваш же компьютер); порт "
-                              "совпадает с GAME_SERVER_PORT на сервере.")
+                              "Проверьте: сервер запущен; в поле адрес машины с "
+                              "сервером (127.0.0.1 — это ваш же компьютер; при игре "
+                              "через ZeroTier/Tailscale — адрес сервера в этой сети); "
+                              "порт совпадает с GAME_SERVER_PORT на сервере.")
             .arg(raw, endpoint);
     }
     if (raw.contains(QStringLiteral("timed out"), Qt::CaseInsensitive)
