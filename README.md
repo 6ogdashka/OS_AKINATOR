@@ -42,7 +42,7 @@ sudo pacman -S --needed base-devel cmake qt6-base
 ### 1.2. Сборка
 
 ```bash
-cd akinator-battle          # папка с репозиторием
+cd <путь к репозиторию>
 cmake -S . -B build
 cmake --build build -j"$(nproc)"
 ```
