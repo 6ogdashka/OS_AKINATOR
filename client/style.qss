@@ -1,0 +1,357 @@
+/* style.qss — тема «Бой Акинаторов».
+ * Палитра взята с иллюстраций Акинаторов: фиолетовый колпак (#7B3FA0),
+ * золотой месяц (#F2C230) и серо-дымчатый хвост джинна (#C9CCD3).
+ * Стили применяются в client/main.cpp через QApplication::setStyleSheet.
+ */
+
+/* --- База ---------------------------------------------------------------- */
+
+QWidget {
+    color: #EDE7F6;
+    font-size: 14px;
+}
+
+QMainWindow,
+QDialog {
+    background: #17111F;
+}
+
+QWidget#page {
+    background: qlineargradient(x1:0, y1:0, x2:0.9, y2:1,
+                                stop:0 #1B1229, stop:0.55 #221735, stop:1 #160F22);
+}
+
+QToolTip {
+    background: #2A1F3D;
+    color: #F2C230;
+    border: 1px solid #7B3FA0;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+/* --- Карточки и заголовки ------------------------------------------------ */
+
+QFrame#card {
+    background: rgba(42, 31, 61, 0.92);
+    border: 1px solid rgba(242, 194, 48, 0.28);
+    border-radius: 18px;
+}
+
+QFrame#cardHighlight {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                stop:0 rgba(123, 63, 160, 0.55), stop:1 rgba(42, 31, 61, 0.92));
+    border: 1px solid rgba(242, 194, 48, 0.45);
+    border-radius: 18px;
+}
+
+QGroupBox {
+    background: rgba(42, 31, 61, 0.92);
+    border: 1px solid rgba(242, 194, 48, 0.28);
+    border-radius: 14px;
+    margin-top: 14px;
+    padding: 14px 12px 12px 12px;
+    font-weight: 600;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 14px;
+    padding: 2px 8px;
+    color: #F2C230;
+}
+
+QLabel#brandTitle {
+    color: #F2C230;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 3px;
+}
+
+QLabel#brandSubtitle {
+    color: #A99BC0;
+    font-size: 13px;
+}
+
+QLabel#pageTitle {
+    color: #F2C230;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+QLabel#pageSubtitle {
+    color: #A99BC0;
+    font-size: 13px;
+}
+
+QLabel#statusLabel {
+    font-size: 20px;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+
+QLabel#statLabel {
+    color: #F2C230;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+QLabel#hintStat {
+    color: #A99BC0;
+    font-size: 12px;
+}
+
+QLabel#mutedLabel {
+    color: #A99BC0;
+}
+
+QLabel#stateImage {
+    background: transparent;
+}
+
+QLabel#turnBadge {
+    padding: 4px 12px;
+    border-radius: 10px;
+    background: rgba(123, 63, 160, 0.45);
+    border: 1px solid rgba(242, 194, 48, 0.35);
+    color: #F2C230;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+/* --- Кнопки -------------------------------------------------------------- */
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #7B3FA0, stop:1 #55296F);
+    border: 1px solid #9B62BE;
+    border-radius: 10px;
+    padding: 10px 18px;
+    color: #F6F1FF;
+    font-weight: 600;
+    min-height: 20px;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #9250BA, stop:1 #6C348F);
+    border-color: #F2C230;
+}
+
+QPushButton:pressed {
+    background: #48215F;
+    border-color: #D8A11A;
+}
+
+QPushButton:disabled {
+    background: #2B2340;
+    border-color: #3C3253;
+    color: #6E6386;
+}
+
+QPushButton:focus {
+    outline: none;
+    border-color: #F2C230;
+}
+
+QPushButton#primaryButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #F7CE4A, stop:1 #D8A11A);
+    border: 1px solid #FFE07A;
+    color: #2A1B00;
+    font-weight: 800;
+    font-size: 15px;
+    padding: 12px 22px;
+}
+
+QPushButton#primaryButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #FFD963, stop:1 #E8B024);
+}
+
+QPushButton#primaryButton:pressed {
+    background: #C9930F;
+}
+
+QPushButton#primaryButton:disabled {
+    background: #3A3350;
+    border-color: #4A4166;
+    color: #7C7194;
+}
+
+QPushButton#hintButton {
+    font-size: 12px;
+    padding: 9px 10px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #3D2C56, stop:1 #2C2145);
+    border: 1px solid #6C348F;
+}
+
+QPushButton#hintButton:hover {
+    background: #52376F;
+    border-color: #F2C230;
+}
+
+QPushButton#hintButton:disabled {
+    background: #241C34;
+    border-color: #362A4C;
+    color: #655A7C;
+}
+
+QPushButton#dangerButton {
+    background: transparent;
+    border: 1px solid #B4566B;
+    color: #E58EA0;
+}
+
+QPushButton#dangerButton:hover {
+    background: rgba(180, 86, 107, 0.2);
+    border-color: #E58EA0;
+}
+
+QPushButton#dangerButton:disabled {
+    border-color: #4A3A4A;
+    color: #7A6672;
+}
+
+/* --- Поля ввода ---------------------------------------------------------- */
+
+QLineEdit,
+QSpinBox {
+    background: #1B1428;
+    border: 1px solid #463663;
+    border-radius: 9px;
+    padding: 8px 12px;
+    color: #F3EEFB;
+    selection-background-color: #7B3FA0;
+    selection-color: #FFFFFF;
+}
+
+QLineEdit:focus,
+QSpinBox:focus {
+    border-color: #F2C230;
+}
+
+QLineEdit:disabled,
+QSpinBox:disabled {
+    background: #221A30;
+    color: #7C7194;
+    border-color: #33284A;
+}
+
+QLineEdit#searchField {
+    padding-left: 14px;
+}
+
+/* --- Списки -------------------------------------------------------------- */
+
+QListWidget {
+    background: #1B1428;
+    border: 1px solid #463663;
+    border-radius: 12px;
+    padding: 6px;
+    outline: 0;
+    alternate-background-color: #201830;
+}
+
+QListWidget::item {
+    padding: 9px 10px;
+    border-radius: 8px;
+    color: #E4DCF2;
+}
+
+QListWidget::item:hover {
+    background: rgba(123, 63, 160, 0.35);
+}
+
+QListWidget::item:selected {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #7B3FA0, stop:1 #5A2B78);
+    color: #FFFFFF;
+    border: 1px solid rgba(242, 194, 48, 0.55);
+}
+
+QListWidget::item:selected:!active {
+    background: #5A2B78;
+    color: #FFFFFF;
+}
+
+/* --- Журнал партии ------------------------------------------------------- */
+
+QPlainTextEdit,
+QTextEdit {
+    background: #140F1D;
+    border: 1px solid #3A2D53;
+    border-radius: 12px;
+    padding: 10px;
+    color: #D8CFEA;
+    selection-background-color: #7B3FA0;
+    selection-color: #FFFFFF;
+}
+
+/* --- Полосы прокрутки ---------------------------------------------------- */
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 4px 2px 4px 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: #5A2B78;
+    border-radius: 5px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #9250BA;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+    width: 0;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 2px 4px 2px 4px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #5A2B78;
+    border-radius: 5px;
+    min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #9250BA;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    height: 0;
+    width: 0;
+}
+
+/* --- Прочее -------------------------------------------------------------- */
+
+QDialogButtonBox QPushButton {
+    min-width: 110px;
+}
+
+QCheckBox {
+    color: #E4DCF2;
+    spacing: 8px;
+}
+
+QSplitter::handle {
+    background: rgba(242, 194, 48, 0.18);
+    width: 2px;
+}

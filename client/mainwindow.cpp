@@ -3,15 +3,15 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QFont>
 #include <QFormLayout>
+#include <QFrame>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QJsonValue>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPixmap>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
@@ -29,6 +29,31 @@ namespace {
 constexpr int kConnectPage = 0;
 constexpr int kSecretPage = 1;
 constexpr int kGamePage = 2;
+
+// Размеры иллюстраций состояний (PNG в client/assets, подключены через .qrc).
+constexpr int kStateImageSide = 264;
+constexpr int kConnectImageSide = 190;
+constexpr int kSecretImageSide = 132;
+
+// Иллюстрация состояния: idle — ожидание, think — думают над вопросом,
+// happy — победа, hard — поражение.
+QPixmap loadStatePixmap(const QString& name, int side)
+{
+    QPixmap pixmap(QStringLiteral(":/assets/state_%1.png").arg(name));
+    if (pixmap.isNull()) {
+        return pixmap;
+    }
+    return pixmap.scaled(side, side, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+}
+
+QLabel* makeImageLabel(QWidget* parent, const QString& name, int side)
+{
+    auto* label = new QLabel(parent);
+    label->setObjectName(QStringLiteral("stateImage"));
+    label->setAlignment(Qt::AlignCenter);
+    label->setPixmap(loadStatePixmap(name, side));
+    return label;
+}
 
 // Скрыть элементы списка, не содержащие подстроку поиска (без учёта регистра).
 void filterList(QListWidget* list, const QString& text)
@@ -98,7 +123,8 @@ MainWindow::~MainWindow() = default;
 void MainWindow::buildUi()
 {
     setWindowTitle(QStringLiteral("Бой Акинаторов"));
-    resize(820, 640);
+    resize(1040, 720);
+    setMinimumSize(920, 640);
 
     stack_ = new QStackedWidget(this);
     stack_->addWidget(buildConnectPage());
@@ -110,6 +136,20 @@ void MainWindow::buildUi()
 QWidget* MainWindow::buildConnectPage()
 {
     auto* page = new QWidget(this);
+    page->setObjectName(QStringLiteral("page"));
+
+    auto* title = new QLabel(QStringLiteral("БОЙ АКИНАТОРОВ"), page);
+    title->setObjectName(QStringLiteral("brandTitle"));
+    title->setAlignment(Qt::AlignCenter);
+
+    auto* subtitle = new QLabel(
+        QStringLiteral("Дуэль на двоих: 60 персонажей, 139 вопросов и три ML-подсказки"),
+        page);
+    subtitle->setObjectName(QStringLiteral("brandSubtitle"));
+    subtitle->setAlignment(Qt::AlignCenter);
+    subtitle->setWordWrap(true);
+
+    connectImage_ = makeImageLabel(page, QStringLiteral("idle"), kConnectImageSide);
 
     hostField_ = new QLineEdit(page);
     hostField_->setPlaceholderText(QStringLiteral("127.0.0.1"));
@@ -117,25 +157,42 @@ QWidget* MainWindow::buildConnectPage()
     portField_ = new QSpinBox(page);
     portField_->setRange(1, 65535);
     portField_->setValue(9999);
+    portField_->setMaximumWidth(140);
 
     connectButton_ = new QPushButton(QStringLiteral("Подключиться"), page);
+    connectButton_->setObjectName(QStringLiteral("primaryButton"));
+    connectButton_->setCursor(Qt::PointingHandCursor);
 
     connectStatusLabel_ = new QLabel(page);
+    connectStatusLabel_->setObjectName(QStringLiteral("mutedLabel"));
     connectStatusLabel_->setWordWrap(true);
+    connectStatusLabel_->setAlignment(Qt::AlignCenter);
 
     auto* form = new QFormLayout;
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    form->setSpacing(10);
     form->addRow(QStringLiteral("Адрес сервера:"), hostField_);
     form->addRow(QStringLiteral("Порт:"), portField_);
 
-    auto* box = new QGroupBox(QStringLiteral("Подключение к серверу"), page);
-    auto* boxLayout = new QVBoxLayout(box);
-    boxLayout->addLayout(form);
-    boxLayout->addWidget(connectButton_);
-    boxLayout->addWidget(connectStatusLabel_);
+    auto* card = new QFrame(page);
+    card->setObjectName(QStringLiteral("cardHighlight"));
+    card->setMaximumWidth(540);
+
+    auto* cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(28, 26, 28, 24);
+    cardLayout->setSpacing(12);
+    cardLayout->addWidget(title);
+    cardLayout->addWidget(subtitle);
+    cardLayout->addWidget(connectImage_, 0, Qt::AlignHCenter);
+    cardLayout->addLayout(form);
+    cardLayout->addSpacing(4);
+    cardLayout->addWidget(connectButton_);
+    cardLayout->addWidget(connectStatusLabel_);
 
     auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(24, 24, 24, 24);
     layout->addStretch();
-    layout->addWidget(box);
+    layout->addWidget(card, 0, Qt::AlignHCenter);
     layout->addStretch();
 
     connect(connectButton_, &QPushButton::clicked, this, &MainWindow::onConnectClicked);
@@ -145,32 +202,65 @@ QWidget* MainWindow::buildConnectPage()
 QWidget* MainWindow::buildSecretPage()
 {
     auto* page = new QWidget(this);
+    page->setObjectName(QStringLiteral("page"));
 
-    auto* title = new QLabel(QStringLiteral("Загадайте персонажа для соперника"), page);
-    QFont titleFont = title->font();
-    titleFont.setPointSize(titleFont.pointSize() + 2);
-    titleFont.setBold(true);
-    title->setFont(titleFont);
+    auto* title = new QLabel(QStringLiteral("Загадайте персонажа"), page);
+    title->setObjectName(QStringLiteral("pageTitle"));
+
+    auto* subtitle = new QLabel(
+        QStringLiteral("Соперник будет задавать вопросы именно про него"), page);
+    subtitle->setObjectName(QStringLiteral("pageSubtitle"));
+    subtitle->setWordWrap(true);
+
+    secretImage_ = makeImageLabel(page, QStringLiteral("think"), kSecretImageSide);
 
     searchField_ = new QLineEdit(page);
+    searchField_->setObjectName(QStringLiteral("searchField"));
     searchField_->setPlaceholderText(QStringLiteral("Поиск персонажа…"));
+    searchField_->setClearButtonEnabled(true);
 
     characterList_ = new QListWidget(page);
+    characterList_->setAlternatingRowColors(true);
+    characterList_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     for (int id = 0; id < gamecore::kCharacterCount; ++id) {
         auto* item = new QListWidgetItem(characterName(id), characterList_);
         item->setData(Qt::UserRole, id);
     }
 
     confirmSecretButton_ = new QPushButton(QStringLiteral("Загадать выбранного"), page);
+    confirmSecretButton_->setObjectName(QStringLiteral("primaryButton"));
+    confirmSecretButton_->setCursor(Qt::PointingHandCursor);
+
     secretStatusLabel_ = new QLabel(page);
+    secretStatusLabel_->setObjectName(QStringLiteral("mutedLabel"));
     secretStatusLabel_->setWordWrap(true);
 
+    auto* headerText = new QVBoxLayout;
+    headerText->setSpacing(4);
+    headerText->addWidget(title);
+    headerText->addWidget(subtitle);
+    headerText->addStretch();
+
+    auto* header = new QHBoxLayout;
+    header->setSpacing(16);
+    header->addWidget(secretImage_);
+    header->addLayout(headerText, 1);
+
+    auto* card = new QFrame(page);
+    card->setObjectName(QStringLiteral("card"));
+
+    auto* cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(20, 18, 20, 18);
+    cardLayout->setSpacing(12);
+    cardLayout->addLayout(header);
+    cardLayout->addWidget(searchField_);
+    cardLayout->addWidget(characterList_, 1);
+    cardLayout->addWidget(confirmSecretButton_);
+    cardLayout->addWidget(secretStatusLabel_);
+
     auto* layout = new QVBoxLayout(page);
-    layout->addWidget(title);
-    layout->addWidget(searchField_);
-    layout->addWidget(characterList_, 1);
-    layout->addWidget(confirmSecretButton_);
-    layout->addWidget(secretStatusLabel_);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->addWidget(card, 1);
 
     connect(searchField_, &QLineEdit::textChanged, this, &MainWindow::onSecretSearchChanged);
     connect(characterList_, &QListWidget::itemDoubleClicked, this,
@@ -183,48 +273,92 @@ QWidget* MainWindow::buildSecretPage()
 QWidget* MainWindow::buildGamePage()
 {
     auto* page = new QWidget(this);
+    page->setObjectName(QStringLiteral("page"));
 
     statusLabel_ = new QLabel(page);
-    QFont statusFont = statusLabel_->font();
-    statusFont.setBold(true);
-    statusFont.setPointSize(statusFont.pointSize() + 1);
-    statusLabel_->setFont(statusFont);
+    statusLabel_->setObjectName(QStringLiteral("statusLabel"));
+    statusLabel_->setWordWrap(true);
 
     candidatesLabel_ = new QLabel(page);
+    candidatesLabel_->setObjectName(QStringLiteral("statLabel"));
+    candidatesLabel_->setAlignment(Qt::AlignCenter);
+
     hintsLabel_ = new QLabel(page);
+    hintsLabel_->setObjectName(QStringLiteral("hintStat"));
+    hintsLabel_->setWordWrap(true);
+    hintsLabel_->setAlignment(Qt::AlignCenter);
+
+    stateImage_ = makeImageLabel(page, QStringLiteral("idle"), kStateImageSide);
 
     askButton_ = new QPushButton(QStringLiteral("Задать вопрос"), page);
+    askButton_->setObjectName(QStringLiteral("primaryButton"));
     hintVarianceButton_ = new QPushButton(QStringLiteral("Подсказка: дисперсия"), page);
-    hintRandomForestButton_ = new QPushButton(QStringLiteral("Подсказка: Random Forest"), page);
-    hintCatBoostButton_ = new QPushButton(QStringLiteral("Подсказка: CatBoost"), page);
+    hintRandomForestButton_ = new QPushButton(QStringLiteral("Random Forest"), page);
+    hintCatBoostButton_ = new QPushButton(QStringLiteral("CatBoost"), page);
+    hintVarianceButton_->setObjectName(QStringLiteral("hintButton"));
+    hintRandomForestButton_->setObjectName(QStringLiteral("hintButton"));
+    hintCatBoostButton_->setObjectName(QStringLiteral("hintButton"));
+    hintVarianceButton_->setToolTip(QStringLiteral("Подсказка «дисперсия»: по одной на партию"));
+    hintRandomForestButton_->setToolTip(QStringLiteral("Подсказка Random Forest: по одной на партию"));
+    hintCatBoostButton_->setToolTip(QStringLiteral("Подсказка CatBoost: по одной на партию"));
+
     tableButton_ = new QPushButton(QStringLiteral("Открыть таблицу"), page);
     guessButton_ = new QPushButton(QStringLiteral("Угадать"), page);
     rematchButton_ = new QPushButton(QStringLiteral("Реванш"), page);
+    rematchButton_->setObjectName(QStringLiteral("primaryButton"));
     leaveButton_ = new QPushButton(QStringLiteral("Выход"), page);
+    leaveButton_->setObjectName(QStringLiteral("dangerButton"));
 
     logText_ = new QPlainTextEdit(page);
     logText_->setReadOnly(true);
+    logText_->setMinimumHeight(160);
 
-    auto* infoLayout = new QHBoxLayout;
-    infoLayout->addWidget(candidatesLabel_);
-    infoLayout->addStretch();
-    infoLayout->addWidget(hintsLabel_);
+    auto* logTitle = new QLabel(QStringLiteral("Журнал партии"), page);
+    logTitle->setObjectName(QStringLiteral("pageSubtitle"));
 
+    // Левая колонка — иллюстрация состояния и статистика.
+    auto* avatarCard = new QFrame(page);
+    avatarCard->setObjectName(QStringLiteral("cardHighlight"));
+    avatarCard->setFixedWidth(300);
+
+    auto* avatarLayout = new QVBoxLayout(avatarCard);
+    avatarLayout->setContentsMargins(16, 18, 16, 18);
+    avatarLayout->setSpacing(10);
+    avatarLayout->addWidget(stateImage_, 0, Qt::AlignHCenter);
+    avatarLayout->addWidget(candidatesLabel_);
+    avatarLayout->addWidget(hintsLabel_);
+    avatarLayout->addStretch();
+
+    // Правая колонка — статус, действия и журнал.
     auto* buttons = new QGridLayout;
-    buttons->addWidget(askButton_, 0, 0);
-    buttons->addWidget(hintVarianceButton_, 0, 1);
-    buttons->addWidget(hintRandomForestButton_, 0, 2);
-    buttons->addWidget(hintCatBoostButton_, 0, 3);
-    buttons->addWidget(tableButton_, 1, 0);
-    buttons->addWidget(guessButton_, 1, 1);
-    buttons->addWidget(rematchButton_, 1, 2);
-    buttons->addWidget(leaveButton_, 1, 3);
+    buttons->setSpacing(10);
+    buttons->addWidget(askButton_, 0, 0, 1, 2);
+    buttons->addWidget(guessButton_, 0, 2);
+    buttons->addWidget(hintVarianceButton_, 1, 0);
+    buttons->addWidget(hintRandomForestButton_, 1, 1);
+    buttons->addWidget(hintCatBoostButton_, 1, 2);
+    buttons->addWidget(tableButton_, 2, 0, 1, 2);
+    buttons->addWidget(leaveButton_, 2, 2);
+    buttons->addWidget(rematchButton_, 3, 0, 1, 3);
 
-    auto* layout = new QVBoxLayout(page);
-    layout->addWidget(statusLabel_);
-    layout->addLayout(infoLayout);
-    layout->addLayout(buttons);
-    layout->addWidget(logText_, 1);
+    auto* actionsCard = new QFrame(page);
+    actionsCard->setObjectName(QStringLiteral("card"));
+    auto* actionsLayout = new QVBoxLayout(actionsCard);
+    actionsLayout->setContentsMargins(16, 16, 16, 16);
+    actionsLayout->addLayout(buttons);
+
+    auto* right = new QVBoxLayout;
+    right->setSpacing(12);
+    right->addWidget(statusLabel_);
+    right->addWidget(actionsCard);
+    right->addWidget(logTitle);
+    right->addWidget(logText_, 1);
+
+    auto* layout = new QHBoxLayout(page);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(16);
+    layout->addWidget(avatarCard, 0);
+    layout->addLayout(right, 1);
 
     connect(askButton_, &QPushButton::clicked, this, &MainWindow::onAskClicked);
     connect(hintVarianceButton_, &QPushButton::clicked, this, &MainWindow::onVarianceClicked);
@@ -289,6 +423,29 @@ void MainWindow::applyState(UiState state)
     updateTurnStatus();
     updateCandidatesLabel();
     updateHintsLabel();
+    updateStateImage();
+}
+
+void MainWindow::updateStateImage()
+{
+    if (!stateImage_) {
+        return;
+    }
+
+    QString name;
+    switch (state_) {
+    case UiState::MyTurn:
+        name = QStringLiteral("think");
+        break;
+    case UiState::MatchOver:
+        name = lastMatchWon_ ? QStringLiteral("happy") : QStringLiteral("hard");
+        break;
+    default:
+        name = QStringLiteral("idle");
+        break;
+    }
+
+    stateImage_->setPixmap(loadStatePixmap(name, kStateImageSide));
 }
 
 void MainWindow::updateTurnStatus()
@@ -451,13 +608,16 @@ void MainWindow::onAnswer(const proto::Message& message)
 
     if (message.hasHint) {
         const QJsonObject hint = message.raw.value(QStringLiteral("hint")).toObject();
-        appendLog(QStringLiteral("Подсказка «%1» (metric %2): «%3» → %4 (осталось %5)")
+        appendLog(QStringLiteral("Подсказка «%1» (metric %2): «%3» → %4. "
+                                 "Сервер убрал неподходящих, в таблице %5.")
                       .arg(hint.value(QStringLiteral("kind")).toString())
                       .arg(hint.value(QStringLiteral("metric")).toDouble(), 0, 'f', 3)
                       .arg(question, answer)
                       .arg(message.remaining));
     } else {
-        appendLog(QStringLiteral("Вы спросили «%1» → %2 (осталось %3)")
+        // Обычный вопрос не фильтрует таблицу: кандидатов убирает сам игрок.
+        appendLog(QStringLiteral("Вы спросили «%1» → %2. В таблице %3 кандидатов — "
+                                 "уберите лишних вручную.")
                       .arg(question, answer)
                       .arg(message.remaining));
     }
@@ -503,7 +663,7 @@ void MainWindow::onRemoveOk(int remaining)
 {
     candidatesCount_ = remaining;
     updateCandidatesLabel();
-    appendLog(QStringLiteral("Список кандидатов обновлён, осталось %1").arg(remaining));
+    appendLog(QStringLiteral("Убрано вручную, осталось %1 кандидатов").arg(remaining));
 }
 
 void MainWindow::onGuessResult(bool correct)
@@ -520,6 +680,7 @@ void MainWindow::onMatchOver(int winner, int characterId, const QString& charact
 {
     waitingAnswer_ = false;
     const bool won = winner == localPlayer_;
+    lastMatchWon_ = won;
 
     if (won) {
         appendLog(QStringLiteral("Победа! Соперник загадал «%1» (#%2).")

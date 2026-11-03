@@ -400,7 +400,7 @@ void Server::handleQuestion(int slot, int questionId)
         sendError(slot, QStringLiteral("Этот вопрос уже задан"));
         return;
     }
-    applyQuestion(slot, questionId, QJsonObject());
+    applyQuestion(slot, questionId, QJsonObject(), /*filterCandidates=*/false);
 }
 
 void Server::handleHint(int slot, proto::HintKind kind)
@@ -446,10 +446,11 @@ void Server::handleHint(int slot, proto::HintKind kind)
     // Сначала сообщаем обновлённый остаток подсказок, затем применяем вопрос:
     // порядок у спрашивающего hint_status -> answer -> turn.
     sendHintStatus(slot);
-    applyQuestion(slot, result.question, hint);
+    applyQuestion(slot, result.question, hint, /*filterCandidates=*/true);
 }
 
-void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint)
+void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint,
+                           bool filterCandidates)
 {
     Player& player = players_[slot];
     const Player& opponent = players_[opponentSlot(slot)];
@@ -457,20 +458,27 @@ void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint)
     const bool yes = gamecore::value(opponent.secret, questionId) > 0;
     const QString answer = yes ? QStringLiteral("yes") : QStringLiteral("no");
 
-    player.candidates =
-        gamecore::filterCandidates(player.candidates, questionId, yes ? 1 : -1);
     player.asked.push_back(questionId);
+    // Обычный вопрос лишь сообщает ответ: набор кандидатов игрок сокращает сам
+    // через таблицу. Подсказка выбирает вопрос именно по текущему набору,
+    // поэтому для неё сервер фильтрует кандидатов сам.
+    if (filterCandidates) {
+        player.candidates =
+            gamecore::filterCandidates(player.candidates, questionId, yes ? 1 : -1);
+    }
 
     send(slot, proto::makeAnswer(questionId, answer,
                                  static_cast<int>(player.candidates.size()), hint));
     send(opponentSlot(slot), proto::makeOpponentAsked(questionId, answer));
 
-    qInfo().noquote() << QStringLiteral("Игрок %1 спросил #%2 (%3) -> %4, осталось %5")
+    qInfo().noquote() << QStringLiteral("Игрок %1 спросил #%2 (%3) -> %4, %5: %6")
                              .arg(player.id)
                              .arg(questionId)
                              .arg(QString::fromStdString(
                                  gamecore::questionTexts()[static_cast<std::size_t>(questionId)]))
                              .arg(answer)
+                             .arg(filterCandidates ? QStringLiteral("подсказка отфильтровала")
+                                                   : QStringLiteral("таблица без изменений"))
                              .arg(player.candidates.size());
 
     switchTurn();

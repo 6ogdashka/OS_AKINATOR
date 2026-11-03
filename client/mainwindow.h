@@ -79,6 +79,8 @@ private:
     void updateCandidatesLabel();
     void updateHintsLabel();
     void updateTurnStatus();
+    // Картинка состояния (idle/think/happy/hard) в игровой панели.
+    void updateStateImage();
 
     void requestHint(proto::HintKind kind);
     int askQuestionDialog();
@@ -98,17 +100,20 @@ private:
     QSpinBox* portField_ = nullptr;
     QPushButton* connectButton_ = nullptr;
     QLabel* connectStatusLabel_ = nullptr;
+    QLabel* connectImage_ = nullptr;
 
     // Экран выбора персонажа.
     QLineEdit* searchField_ = nullptr;
     QListWidget* characterList_ = nullptr;
     QPushButton* confirmSecretButton_ = nullptr;
     QLabel* secretStatusLabel_ = nullptr;
+    QLabel* secretImage_ = nullptr;
 
     // Экран игры.
     QLabel* statusLabel_ = nullptr;
     QLabel* candidatesLabel_ = nullptr;
     QLabel* hintsLabel_ = nullptr;
+    QLabel* stateImage_ = nullptr;
     QPlainTextEdit* logText_ = nullptr;
     QPushButton* askButton_ = nullptr;
     QPushButton* hintVarianceButton_ = nullptr;
@@ -124,6 +129,7 @@ private:
     int localPlayer_ = 0;
     int currentTurn_ = 0;
     bool waitingAnswer_ = false;
+    bool lastMatchWon_ = false;
     int candidatesCount_ = 0;
     QSet<int> askedQuestions_;
     int hintsLeftVariance_ = 0;

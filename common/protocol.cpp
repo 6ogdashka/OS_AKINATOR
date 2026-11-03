@@ -251,7 +251,7 @@ bool parseMessage(const QByteArray& line, Message* out, QString* error) {
         if (!readAnswerText(object, &message.answer, error)) {
             return false;
         }
-        if (!readInt(object, QStringLiteral("remaining"), 0, kCharacterCount - 1,
+        if (!readInt(object, QStringLiteral("remaining"), 0, kCharacterCount,
                      &message.remaining, error)) {
             return false;
         }
@@ -280,13 +280,13 @@ bool parseMessage(const QByteArray& line, Message* out, QString* error) {
         if (!readCharacterArray(object, &message.characterIds, error)) {
             return false;
         }
-        if (!readInt(object, QStringLiteral("count"), 0, kCharacterCount - 1,
+        if (!readInt(object, QStringLiteral("count"), 0, kCharacterCount,
                      &message.count, error)) {
             return false;
         }
         break;
     case Type::RemoveOk:
-        if (!readInt(object, QStringLiteral("remaining"), 0, kCharacterCount - 1,
+        if (!readInt(object, QStringLiteral("remaining"), 0, kCharacterCount,
                      &message.remaining, error)) {
             return false;
         }

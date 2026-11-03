@@ -2,6 +2,8 @@
 // (GAME_SERVER_HOST / GAME_SERVER_PORT), но приоритет у полей в окне.
 #include <QApplication>
 #include <QDebug>
+#include <QFile>
+#include <QIcon>
 #include <QString>
 
 #include "connection.h"
@@ -11,12 +13,29 @@ namespace {
 
 constexpr int kDefaultPort = 9999;
 
+// Тема оформления лежит в ресурсах (client/resources.qrc) — один файл на весь
+// клиент, чтобы вид не зависел от платформы и рабочего каталога.
+void applyTheme(QApplication& app)
+{
+    QFile styleFile(QStringLiteral(":/style.qss"));
+    if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        app.setStyleSheet(QString::fromUtf8(styleFile.readAll()));
+    } else {
+        qWarning().noquote() << QStringLiteral("Не удалось загрузить :/style.qss");
+    }
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/state_idle.png")));
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("akinator-client"));
+
+    // Fusion рисует одинаково на Windows/macOS/Linux — важно для QSS-темы.
+    QApplication::setStyle(QStringLiteral("Fusion"));
+    applyTheme(app);
 
     QString host = qEnvironmentVariable("GAME_SERVER_HOST").trimmed();
     if (host.isEmpty()) {

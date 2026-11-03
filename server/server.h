@@ -78,7 +78,10 @@ private:
     bool ensureTurn(int slot);
     bool isAsked(int slot, int questionId) const;
 
-    void applyQuestion(int slot, int questionId, const QJsonObject& hint);
+    // filterCandidates = true только для подсказок: обычный вопрос возвращает
+    // ответ, но список кандидатов не трогает — игрок правит его вручную (remove).
+    void applyQuestion(int slot, int questionId, const QJsonObject& hint,
+                       bool filterCandidates);
     void switchTurn();
     void dropLobby(int closingSlot);
 

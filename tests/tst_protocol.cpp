@@ -23,6 +23,7 @@ private slots:
     void parse_start_validation();
     void framing_crlf();
     void type_roundtrip();
+    void parse_full_candidates();
 };
 
 // 15. Разбор set_secret.
@@ -236,6 +237,33 @@ void TestProtocol::type_roundtrip()
         proto::HintKind parsed = proto::HintKind::Variance;
         QVERIFY(proto::hintKindFromString(text, &parsed));
         QCOMPARE(parsed, kind);
+    }
+}
+
+// 28. remaining/count = 60 допустимы: обычный вопрос не фильтрует таблицу,
+//     поэтому сервер законно присылает полный набор кандидатов.
+void TestProtocol::parse_full_candidates()
+{
+    {
+        proto::Message message;
+        QString error;
+        QVERIFY(proto::parseMessage(
+            QByteArrayLiteral(R"({"type":"answer","questionId":3,"answer":"yes","remaining":60})"),
+            &message, &error));
+        QCOMPARE(message.remaining, 60);
+
+        QVERIFY(proto::parseMessage(
+            QByteArrayLiteral(R"({"type":"remove_ok","remaining":60})"), &message, &error));
+        QCOMPARE(message.remaining, 60);
+
+        QVERIFY(proto::parseMessage(
+            QByteArrayLiteral(R"({"type":"candidates","characterIds":[0],"count":60})"),
+            &message, &error));
+        QCOMPARE(message.count, 60);
+
+        QVERIFY(!proto::parseMessage(
+            QByteArrayLiteral(R"({"type":"answer","questionId":3,"answer":"yes","remaining":61})"),
+            &message, &error));
     }
 }
 

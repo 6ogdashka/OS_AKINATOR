@@ -65,7 +65,8 @@ struct Message {
     int questionId = -1;
     int player = 0;
     int winner = 0;
-    int remaining = -1;
+    int remaining = -1;  // кандидатов у игрока: обычный вопрос набор не меняет,
+                         // подсказка — уже отфильтрованный набор
     int count = -1;
     bool correct = false;
 

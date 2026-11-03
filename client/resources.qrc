@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>style.qss</file>
+        <file>assets/state_idle.png</file>
+        <file>assets/state_think.png</file>
+        <file>assets/state_happy.png</file>
+        <file>assets/state_hard.png</file>
+    </qresource>
+</RCC>
