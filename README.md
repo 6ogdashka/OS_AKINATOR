@@ -94,6 +94,73 @@ GAME_SERVER_HOST=127.0.0.1 GAME_SERVER_PORT=9999 ./build/bin/akinator-client
 полях GUI** в момент нажатия «Подключиться». Пустой host → `127.0.0.1`,
 некорректный порт → `9999` (предупреждение в статусной строке).
 
+## Windows: сборка и подключение
+
+1. Установить **Qt 6.5+** (комплект `MSVC 2019/2022 64-bit`), **CMake ≥ 3.16** и
+   **Visual Studio Build Tools** (C++ workload). Проще всего — Qt Online Installer,
+   он же ставит Qt Creator, Ninja и CMake.
+2. Собрать из консоли `x64 Native Tools Command Prompt for VS 2022` (путь к Qt
+   подставьте свой):
+
+```bat
+cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=C:\Qt\6.9.3\msvc2022_64 -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+Для комплекта `mingw_64` вместо Ninja: `-G "MinGW Makefiles"`. Без
+`CMAKE_PREFIX_PATH` CMake не найдёт Qt6 (`Could not find a package configuration
+file for "Qt6"`).
+
+3. Windows не ищет Qt-DLL по PATH — разложить их рядом с `.exe` (делается один раз
+   после сборки):
+
+```bat
+C:\Qt\6.9.3\msvc2022_64\bin\windeployqt.exe --release build\bin\akinator-client.exe
+C:\Qt\6.9.3\msvc2022_64\bin\windeployqt.exe --release build\bin\akinator-server.exe
+```
+
+`gamecore.dll` уже лежит в `build\bin` — папка `bin` общая для всех бинарников,
+поэтому `.exe` нельзя переносить поодиночке.
+
+4. Подключение — **полями в окне**: «Адрес сервера» = IP машины с сервером
+   (например `192.168.1.10`), «Порт» = `9999`, кнопка «Подключиться». Либо
+   переменными окружения (они лишь предзаполняют поля):
+
+```bat
+set GAME_SERVER_HOST=192.168.1.10
+set GAME_SERVER_PORT=9999
+build\bin\akinator-client.exe
+```
+
+PowerShell — свой синтаксис (запись `VAR=value prog` из bash/cmd там не работает):
+
+```powershell
+$env:GAME_SERVER_HOST = "192.168.1.10"
+$env:GAME_SERVER_PORT = "9999"
+.\build\bin\akinator-client.exe
+```
+
+5. Второй игрок — **второй процесс** того же `.exe` (один клиент = один игрок).
+   Третий подключившийся получает `error` «Сервер занят» и отключается.
+6. Сервер (`akinator-server.exe` или на Linux) должен быть доступен по сети: порт
+   `9999` открыт (Windows Firewall → входящее правило; Linux →
+   `sudo ufw allow 9999/tcp`), для игры через интернет — проброс порта на роутере.
+   Проверка с клиентской машины:
+
+```powershell
+Test-NetConnection 192.168.1.10 -Port 9999
+```
+
+**Типичные проблемы**
+
+| Симптом | Причина / решение |
+|---|---|
+| `Ошибка подключения: Connection refused` в статусной строке | сервер не запущен, неверный порт или порт закрыт фаерволом |
+| Приложение не стартует, «не найден Qt6Widgets.dll» | не выполнен шаг 3 (`windeployqt`) |
+| «Не найден gamecore.dll» | `.exe` вынесен из `build\bin` — вернуть или скопировать DLL рядом |
+| «Сервер занят» при третьем клиенте | лобби строго на 2 игрока, закройте лишний клиент |
+| В логах консоли кракозябры вместо русского | `chcp 65001` в `cmd` перед запуском |
+
 ## Оформление интерфейса
 
 Клиент использует тёмную фиолетово-золотую тему `client/style.qss` (палитра взята
@@ -195,7 +262,9 @@ Windows/macOS/Linux. Тема применяется в `client/main.cpp` чер
    `data/selected_characters.csv` (результат детерминирован).
 5. `GAME_SERVER_PORT=9999 ./build/bin/akinator-server` — в логе `Сервер слушает 0.0.0.0:9999`.
 6. Порт доступен извне (фаервол / проброс порта).
-7. Windows-клиент: `GAME_SERVER_HOST=<публичный_IP> GAME_SERVER_PORT=9999 akinator-client`.
+7. Windows-клиент: собрать по разделу «Windows: сборка и подключение» (`windeployqt`
+   обязателен), затем `set GAME_SERVER_HOST=<публичный_IP>` + `build\bin\akinator-client.exe`
+   (или просто ввести адрес в поле «Адрес сервера»).
 8. Linux/macOS-клиент с тем же адресом.
 9. Оба выбирают персонажей из 60 → `start` → ход игрока 1.
 10. Демонстрация: обычный вопрос → `answer`, таблица кандидатов не изменилась
