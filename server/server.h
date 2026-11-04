@@ -45,6 +45,9 @@ private:
         gamecore::CandidateSet candidates;
         std::vector<int> asked;
         QMap<QString, int> hintsLeft;
+        // true, если последним ходом игрока была подсказка: следующую подсказку
+        // сервер отклонит, пока он не задаст обычный вопрос или не угадает.
+        bool lastTurnWasHint = false;
         bool wantsRematch = false;
     };
 
@@ -78,10 +81,10 @@ private:
     bool ensureTurn(int slot);
     bool isAsked(int slot, int questionId) const;
 
-    // filterCandidates = true только для подсказок: обычный вопрос возвращает
-    // ответ, но список кандидатов не трогает — игрок правит его вручную (remove).
-    void applyQuestion(int slot, int questionId, const QJsonObject& hint,
-                       bool filterCandidates);
+    // Обычный вопрос и подсказка одинаково фильтруют список кандидатов: ответ
+    // авторитетный, поэтому сервер сразу убирает неподходящих (hint пуст для
+    // обычного вопроса и заполнен для подсказки).
+    void applyQuestion(int slot, int questionId, const QJsonObject& hint);
     void switchTurn();
     void dropLobby(int closingSlot);
 

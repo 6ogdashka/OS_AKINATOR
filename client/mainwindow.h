@@ -129,6 +129,9 @@ private:
     int localPlayer_ = 0;
     int currentTurn_ = 0;
     bool waitingAnswer_ = false;
+    // true, если прошлым ходом была подсказка: вторую подряд сервер отклонит,
+    // поэтому кнопки подсказок гаснут до обычного вопроса/догадки.
+    bool hintUsedLastTurn_ = false;
     bool lastMatchWon_ = false;
     int candidatesCount_ = 0;
     QSet<int> askedQuestions_;

@@ -333,9 +333,12 @@ QWidget* MainWindow::buildGamePage()
     hintVarianceButton_->setObjectName(QStringLiteral("hintButton"));
     hintRandomForestButton_->setObjectName(QStringLiteral("hintButton"));
     hintCatBoostButton_->setObjectName(QStringLiteral("hintButton"));
-    hintVarianceButton_->setToolTip(QStringLiteral("Подсказка «дисперсия»: по одной на партию"));
-    hintRandomForestButton_->setToolTip(QStringLiteral("Подсказка Random Forest: по одной на партию"));
-    hintCatBoostButton_->setToolTip(QStringLiteral("Подсказка CatBoost: по одной на партию"));
+    hintVarianceButton_->setToolTip(QStringLiteral("Подсказка «дисперсия»: по одной на партию, "
+                                                   "не две подсказки подряд"));
+    hintRandomForestButton_->setToolTip(QStringLiteral("Подсказка Random Forest: по одной на партию, "
+                                                       "не две подсказки подряд"));
+    hintCatBoostButton_->setToolTip(QStringLiteral("Подсказка CatBoost: по одной на партию, "
+                                                   "не две подсказки подряд"));
 
     tableButton_ = new QPushButton(QStringLiteral("Открыть таблицу"), page);
     guessButton_ = new QPushButton(QStringLiteral("Угадать"), page);
@@ -449,9 +452,12 @@ void MainWindow::applyState(UiState state)
     leaveButton_->setVisible(inGame || matchOver);
 
     askButton_->setEnabled(myTurn);
-    hintVarianceButton_->setEnabled(myTurn && hintsLeftVariance_ > 0);
-    hintRandomForestButton_->setEnabled(myTurn && hintsLeftRandomForest_ > 0);
-    hintCatBoostButton_->setEnabled(myTurn && hintsLeftCatBoost_ > 0);
+    // Подсказки: по одной каждого вида на партию и не две подряд — между ними
+    // нужен обычный вопрос или догадка (сервер проверяет это же правило).
+    const bool hintsAllowed = myTurn && !hintUsedLastTurn_;
+    hintVarianceButton_->setEnabled(hintsAllowed && hintsLeftVariance_ > 0);
+    hintRandomForestButton_->setEnabled(hintsAllowed && hintsLeftRandomForest_ > 0);
+    hintCatBoostButton_->setEnabled(hintsAllowed && hintsLeftCatBoost_ > 0);
     tableButton_->setEnabled(myTurn);
     guessButton_->setEnabled(myTurn);
 
@@ -512,6 +518,7 @@ void MainWindow::resetGameData()
     pending_ = PendingRequest::None;
     currentTurn_ = 0;
     waitingAnswer_ = false;
+    hintUsedLastTurn_ = false;
     candidatesCount_ = gamecore::kCharacterCount;
     hintsLeftVariance_ = 1;
     hintsLeftRandomForest_ = 1;
@@ -531,10 +538,14 @@ void MainWindow::updateCandidatesLabel()
 
 void MainWindow::updateHintsLabel()
 {
-    hintsLabel_->setText(QStringLiteral("Подсказки — дисперсия: %1, Random Forest: %2, CatBoost: %3")
-                             .arg(hintsLeftVariance_)
-                             .arg(hintsLeftRandomForest_)
-                             .arg(hintsLeftCatBoost_));
+    QString text = QStringLiteral("Подсказки — дисперсия: %1, Random Forest: %2, CatBoost: %3")
+                       .arg(hintsLeftVariance_)
+                       .arg(hintsLeftRandomForest_)
+                       .arg(hintsLeftCatBoost_);
+    if (hintUsedLastTurn_) {
+        text += QStringLiteral(" · подсказка была в прошлый ход: сначала обычный вопрос");
+    }
+    hintsLabel_->setText(text);
 }
 
 // --- Подключение ----------------------------------------------------------
@@ -613,6 +624,7 @@ void MainWindow::onStart(const QStringList& players)
 {
     currentTurn_ = 0;
     waitingAnswer_ = false;
+    hintUsedLastTurn_ = false;
     candidatesCount_ = gamecore::kCharacterCount;
     hintsLeftVariance_ = 1;
     hintsLeftRandomForest_ = 1;
@@ -640,6 +652,8 @@ void MainWindow::onAnswer(const proto::Message& message)
     waitingAnswer_ = false;
     askedQuestions_.insert(message.questionId);
     candidatesCount_ = message.remaining;
+    // Подсказку нельзя использовать два хода подряд: обычный вопрос снимает запрет.
+    hintUsedLastTurn_ = message.hasHint;
 
     const QString question = questionText(message.questionId);
     const QString answer = answerText(message.answer);
@@ -647,15 +661,16 @@ void MainWindow::onAnswer(const proto::Message& message)
     if (message.hasHint) {
         const QJsonObject hint = message.raw.value(QStringLiteral("hint")).toObject();
         appendLog(QStringLiteral("Подсказка «%1» (metric %2): «%3» → %4. "
-                                 "Сервер убрал неподходящих, в таблице %5.")
+                                 "Сервер убрал неподходящих, в таблице %5. Следующая "
+                                 "подсказка — только после обычного вопроса.")
                       .arg(hint.value(QStringLiteral("kind")).toString())
                       .arg(hint.value(QStringLiteral("metric")).toDouble(), 0, 'f', 3)
                       .arg(question, answer)
                       .arg(message.remaining));
     } else {
-        // Обычный вопрос не фильтрует таблицу: кандидатов убирает сам игрок.
-        appendLog(QStringLiteral("Вы спросили «%1» → %2. В таблице %3 кандидатов — "
-                                 "уберите лишних вручную.")
+        // Ответ авторитетный: сервер сам вычищает неподходящих из таблицы.
+        appendLog(QStringLiteral("Вы спросили «%1» → %2. Сервер убрал неподходящих, "
+                                 "в таблице %3 кандидатов.")
                       .arg(question, answer)
                       .arg(message.remaining));
     }
@@ -707,6 +722,7 @@ void MainWindow::onRemoveOk(int remaining)
 void MainWindow::onGuessResult(bool correct)
 {
     waitingAnswer_ = false;
+    hintUsedLastTurn_ = false; // догадка — не подсказка, запрет снят
     if (correct) {
         return; // при верной догадке сервер сразу шлёт matchover
     }

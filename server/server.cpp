@@ -116,6 +116,7 @@ void Server::beginWaitingSecrets()
         player.candidates.clear();
         player.asked.clear();
         player.hintsLeft.clear();
+        player.lastTurnWasHint = false;
         player.wantsRematch = false;
     }
     turn_ = 1;
@@ -155,6 +156,7 @@ void Server::startMatch()
         player.hintsLeft.insert(QStringLiteral("variance"), kHintsPerKind);
         player.hintsLeft.insert(QStringLiteral("randomforest"), kHintsPerKind);
         player.hintsLeft.insert(QStringLiteral("catboost"), kHintsPerKind);
+        player.lastTurnWasHint = false;
         player.wantsRematch = false;
     }
 
@@ -400,7 +402,8 @@ void Server::handleQuestion(int slot, int questionId)
         sendError(slot, QStringLiteral("Этот вопрос уже задан"));
         return;
     }
-    applyQuestion(slot, questionId, QJsonObject(), /*filterCandidates=*/false);
+    players_[slot].lastTurnWasHint = false; // обычный вопрос «разрешает» подсказку
+    applyQuestion(slot, questionId, QJsonObject());
 }
 
 void Server::handleHint(int slot, proto::HintKind kind)
@@ -413,6 +416,13 @@ void Server::handleHint(int slot, proto::HintKind kind)
     const QString key = proto::hintKindToString(kind);
     if (player.hintsLeft.value(key, 0) <= 0) {
         sendError(slot, QStringLiteral("Подсказка «%1» уже использована").arg(key));
+        return;
+    }
+    if (player.lastTurnWasHint) {
+        // Раздел 7 ТЗ: подсказки не подряд — между ними нужен обычный ход
+        // (вопрос или угадывание), иначе ими можно вычистить таблицу за три хода.
+        sendError(slot, QStringLiteral("Подсказку нельзя использовать два хода подряд — "
+                                       "сначала задайте обычный вопрос или угадайте"));
         return;
     }
 
@@ -435,6 +445,7 @@ void Server::handleHint(int slot, proto::HintKind kind)
     }
 
     player.hintsLeft.insert(key, player.hintsLeft.value(key) - 1);
+    player.lastTurnWasHint = true;
 
     const QJsonObject hint = proto::makeHintInfo(key, result.score);
     qInfo().noquote() << QStringLiteral("Игрок %1 использует подсказку %2 -> вопрос #%3 (score %4)")
@@ -446,11 +457,10 @@ void Server::handleHint(int slot, proto::HintKind kind)
     // Сначала сообщаем обновлённый остаток подсказок, затем применяем вопрос:
     // порядок у спрашивающего hint_status -> answer -> turn.
     sendHintStatus(slot);
-    applyQuestion(slot, result.question, hint, /*filterCandidates=*/true);
+    applyQuestion(slot, result.question, hint);
 }
 
-void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint,
-                           bool filterCandidates)
+void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint)
 {
     Player& player = players_[slot];
     const Player& opponent = players_[opponentSlot(slot)];
@@ -459,13 +469,10 @@ void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint,
     const QString answer = yes ? QStringLiteral("yes") : QStringLiteral("no");
 
     player.asked.push_back(questionId);
-    // Обычный вопрос лишь сообщает ответ: набор кандидатов игрок сокращает сам
-    // через таблицу. Подсказка выбирает вопрос именно по текущему набору,
-    // поэтому для неё сервер фильтрует кандидатов сам.
-    if (filterCandidates) {
-        player.candidates =
-            gamecore::filterCandidates(player.candidates, questionId, yes ? 1 : -1);
-    }
+    // Ответ авторитетный, поэтому сервер сам сокращает набор кандидатов — и для
+    // обычного вопроса, и для подсказки: игроку не нужно чистить таблицу руками.
+    player.candidates =
+        gamecore::filterCandidates(player.candidates, questionId, yes ? 1 : -1);
 
     send(slot, proto::makeAnswer(questionId, answer,
                                  static_cast<int>(player.candidates.size()), hint));
@@ -477,8 +484,8 @@ void Server::applyQuestion(int slot, int questionId, const QJsonObject& hint,
                              .arg(QString::fromStdString(
                                  gamecore::questionTexts()[static_cast<std::size_t>(questionId)]))
                              .arg(answer)
-                             .arg(filterCandidates ? QStringLiteral("подсказка отфильтровала")
-                                                   : QStringLiteral("таблица без изменений"))
+                             .arg(hint.isEmpty() ? QStringLiteral("таблица отфильтрована")
+                                                 : QStringLiteral("подсказка отфильтровала"))
                              .arg(player.candidates.size());
 
     switchTurn();
@@ -546,6 +553,7 @@ void Server::handleGuess(int slot, int characterId)
     }
 
     const Player& opponent = players_[opponentSlot(slot)];
+    player.lastTurnWasHint = false; // догадка — не подсказка, запрет снимается
     const int secret = opponent.secret;
     const QString secretName =
         QString::fromStdString(gamecore::characterNames()[static_cast<std::size_t>(secret)]);
