@@ -314,6 +314,15 @@ QWidget* MainWindow::buildGamePage()
     statusLabel_->setObjectName(QStringLiteral("statusLabel"));
     statusLabel_->setWordWrap(true);
 
+    // Свой персонаж всегда на виду: игрок часто забывает, кого загадал, а спросить
+    // об этом больше негде — секрет хранится только на сервере.
+    mySecretLabel_ = new QLabel(page);
+    mySecretLabel_->setObjectName(QStringLiteral("mySecretLabel"));
+    mySecretLabel_->setWordWrap(true);
+    mySecretLabel_->setAlignment(Qt::AlignCenter);
+    mySecretLabel_->setToolTip(QStringLiteral("Персонаж, которого вы загадали: соперник "
+                                              "задаёт вопросы именно про него."));
+
     candidatesLabel_ = new QLabel(page);
     candidatesLabel_->setObjectName(QStringLiteral("statLabel"));
     candidatesLabel_->setAlignment(Qt::AlignCenter);
@@ -363,6 +372,7 @@ QWidget* MainWindow::buildGamePage()
     avatarLayout->setContentsMargins(16, 18, 16, 18);
     avatarLayout->setSpacing(10);
     avatarLayout->addWidget(stateImage_, 0, Qt::AlignHCenter);
+    avatarLayout->addWidget(mySecretLabel_);
     avatarLayout->addWidget(candidatesLabel_);
     avatarLayout->addWidget(hintsLabel_);
     avatarLayout->addStretch();
@@ -519,11 +529,15 @@ void MainWindow::resetGameData()
     currentTurn_ = 0;
     waitingAnswer_ = false;
     hintUsedLastTurn_ = false;
+    // Секрет выбирается заново на каждом welcome/реванше: сервер сбрасывает
+    // лобби при отключении, поэтому старый выбор уже недействителен.
+    mySecretId_ = -1;
     candidatesCount_ = gamecore::kCharacterCount;
     hintsLeftVariance_ = 1;
     hintsLeftRandomForest_ = 1;
     hintsLeftCatBoost_ = 1;
     logText_->clear();
+    updateMySecretLabel();
 }
 
 void MainWindow::appendLog(const QString& text)
@@ -546,6 +560,21 @@ void MainWindow::updateHintsLabel()
         text += QStringLiteral(" · подсказка была в прошлый ход: сначала обычный вопрос");
     }
     hintsLabel_->setText(text);
+}
+
+void MainWindow::updateMySecretLabel()
+{
+    if (!mySecretLabel_) {
+        return;
+    }
+    if (mySecretId_ < 0) {
+        mySecretLabel_->setText(QStringLiteral("Ваш персонаж: не выбран"));
+        return;
+    }
+    const QString name = characterName(mySecretId_);
+    mySecretLabel_->setText(QStringLiteral("Ваш персонаж: %1").arg(name));
+    mySecretLabel_->setToolTip(QStringLiteral("Вы загадали «%1» — соперник задаёт вопросы "
+                                              "про него.").arg(name));
 }
 
 // --- Подключение ----------------------------------------------------------
@@ -611,6 +640,10 @@ void MainWindow::onConfirmSecretClicked()
     const int id = item->data(Qt::UserRole).toInt();
     connection_->send(proto::makeSetSecret(id));
 
+    // Запоминаем свой секрет локально: сервер обратно его не присылает.
+    mySecretId_ = id;
+    updateMySecretLabel();
+
     confirmSecretButton_->setEnabled(false);
     characterList_->setEnabled(false);
     searchField_->setEnabled(false);
@@ -635,6 +668,13 @@ void MainWindow::onStart(const QStringList& players)
                   .arg(players.value(0, QStringLiteral("Player 1")),
                        players.value(1, QStringLiteral("Player 2"))));
     appendLog(QStringLiteral("Вы — игрок %1.").arg(localPlayer_));
+    // Напоминаем секрет и в журнале: подпись слева всегда под рукой, но журнал
+    // прокручивается вместе с историей вопросов.
+    if (mySecretId_ >= 0) {
+        appendLog(QStringLiteral("Вы загадали «%1» — соперник угадывает именно его.")
+                      .arg(characterName(mySecretId_)));
+    }
+    updateMySecretLabel();
     applyState(UiState::OpponentTurn);
 }
 

@@ -101,6 +101,18 @@ QLabel#hintStat {
     font-size: 12px;
 }
 
+/* Свой загаданный персонаж: золотая плашка в игровой панели — чтобы игрок
+ * в любой момент видел, кого загадал (сервер секрет обратно не присылает). */
+QLabel#mySecretLabel {
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(242, 194, 48, 0.16);
+    border: 1px solid rgba(242, 194, 48, 0.5);
+    color: #F2C230;
+    font-weight: 700;
+    font-size: 14px;
+}
+
 QLabel#mutedLabel {
     color: #A99BC0;
 }

@@ -78,6 +78,8 @@ private:
     void appendLog(const QString& text);
     void updateCandidatesLabel();
     void updateHintsLabel();
+    // Подпись «Ваш персонаж: …» — напоминает игроку его собственный секрет.
+    void updateMySecretLabel();
     void updateTurnStatus();
     // Картинка состояния (idle/think/happy/hard) в игровой панели.
     void updateStateImage();
@@ -111,6 +113,7 @@ private:
 
     // Экран игры.
     QLabel* statusLabel_ = nullptr;
+    QLabel* mySecretLabel_ = nullptr;
     QLabel* candidatesLabel_ = nullptr;
     QLabel* hintsLabel_ = nullptr;
     QLabel* stateImage_ = nullptr;
@@ -127,6 +130,9 @@ private:
     UiState state_ = UiState::Disconnected;
     PendingRequest pending_ = PendingRequest::None;
     int localPlayer_ = 0;
+    // Свой загаданный персонаж: сервер его не присылает обратно (это секрет),
+    // поэтому клиент запоминает выбор сам и показывает его всю партию.
+    int mySecretId_ = -1;
     int currentTurn_ = 0;
     bool waitingAnswer_ = false;
     // true, если прошлым ходом была подсказка: вторую подряд сервер отклонит,
